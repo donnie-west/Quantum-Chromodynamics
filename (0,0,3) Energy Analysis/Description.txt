@@ -1,0 +1,2 @@
+Plots the energy of protons at a certain time with error bars
+Returns an excel sheet with all the data in worksheets
