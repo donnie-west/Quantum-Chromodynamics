@@ -32,21 +32,23 @@ def sort(filename):
         
     return int(joiner)
 
-def DirectoryToDictionary(dirname,stopPointTime,stopPointFile):
+def DirectoryToDictionary(dirname,stopPointTime,stopPointFile,Ocol,Icol):
     dirlist = os.listdir(dirname)
+    
     dirlist.pop(len(dirlist)-1)
     
     dirdict = DictionaryInitialization(stopPointTime)
     
     dirlist.sort(key=sort)
+    #print(dirlist)
     
     for t in range(stopPointFile):
         file = os.path.join(dirname, dirlist[t])
-        FileToMatrix(file, dirdict, stopPointTime)
+        FileToMatrix(file, dirdict,Ocol,Icol, stopPointTime)
 
     return dirdict
 
-def FileToMatrix(filename, dirdict, stopPointTime=20):
+def FileToMatrix(filename, dirdict, Ocol, Icol, stopPointTime=20):
     """
     Create a matrix based on the first two columns of a single file.
     Appends positive momentum value to dictionary depending on the time it was
@@ -74,16 +76,18 @@ def FileToMatrix(filename, dirdict, stopPointTime=20):
         # Parses the line by the whitespace in between columns
         parsed = i.split()
         # Omits the negative momentum
-        parsed.pop(2)
         parsed[0] = int(float(parsed[0]))
+        
+        parsed.pop(Ocol)
         # Stops the loop early if the user doesn't want to analyze all times
         if parsed[0] == stopPointTime + 1:
             break
-        parsed[1] = decimal.Decimal(parsed[1])
+        
+        parsed[Icol] = decimal.Decimal(parsed[Icol])
 
-        dirdict[parsed[0]].append(parsed[1])
+        dirdict[parsed[0]].append(parsed[Icol])
         matrix.append(parsed)
-
+        
     f.close()
 
     return matrix
@@ -146,24 +150,43 @@ if __name__ == "__main__":
     stopPointFile = 397
     stopPointTime = 20
     
-    dirdict = DirectoryToDictionary('PolTwopSink', stopPointTime, stopPointFile)
-    #print(dirdict)
-    bins = Bins(stopPointTime, stopPointFile, dirdict)
-    print(bins)
-    logsofbins = LogsOfBins(bins)
-    print(logsofbins)
-    binlogavg = AvgOfBinLogs(logsofbins)
+    Posdirdict = DirectoryToDictionary('PolTwopSink', stopPointTime, stopPointFile,2,1)
+    #print(Posdirdict)
+    #print(dirdict[0])
+    Negdirdict = DirectoryToDictionary('PolTwopSink', stopPointTime, stopPointFile,1,1)
+    #print(Negdirdict)
+    
+    Posbins = Bins(stopPointTime, stopPointFile, Posdirdict)
+    #print(bins)
+    Poslogsofbins = LogsOfBins(Posbins)
+    #print(logsofbins)
+    Posbinlogavg = AvgOfBinLogs(Poslogsofbins)
     #print(binlogavg)
-    staterror = StatErrorOfBinLogs(logsofbins, binlogavg)
+    Posstaterror = StatErrorOfBinLogs(Poslogsofbins, Posbinlogavg)
+    #print(StatErrorOfBinLogs)
+    
+    Negbins = Bins(stopPointTime, stopPointFile, Negdirdict)
+    #print(bins)
+    Neglogsofbins = LogsOfBins(Negbins)
+    #print(logsofbins)
+    Negbinlogavg = AvgOfBinLogs(Neglogsofbins)
+    #print(binlogavg)
+    Negstaterror = StatErrorOfBinLogs(Neglogsofbins, Negbinlogavg)
     #print(StatErrorOfBinLogs)
     
     for i in range(stopPointFile):
         filearr.append('File {}'.format(i+1))
     
-    bindf = pd.DataFrame(bins, index=filearr)
-    logsofbinsdf = pd.DataFrame(logsofbins, index=filearr)
-    binlogavgdf = pd.DataFrame(binlogavg, index = ['Averages of Natural Log of Bins'])
-    staterrordf = pd.DataFrame(staterror,index = ['Statistical Error of Logged Bins'])
+    Posbindf = pd.DataFrame(Posbins, index=filearr)
+    Poslogsofbinsdf = pd.DataFrame(Poslogsofbins, index=filearr)
+    Posbinlogavgdf = pd.DataFrame(Posbinlogavg, index = ['Averages of Natural Log of Bins'])
+    Posstaterrordf = pd.DataFrame(Posstaterror,index = ['Statistical Error of Logged Bins'])
+    
+    Negbindf = pd.DataFrame(Negbins, index=filearr)
+    Neglogsofbinsdf = pd.DataFrame(Neglogsofbins, index=filearr)
+    Negbinlogavgdf = pd.DataFrame(Negbinlogavg, index = ['Averages of Natural Log of Bins'])
+    Negstaterrordf = pd.DataFrame(Negstaterror,index = ['Statistical Error of Logged Bins'])
+    
     '''
     print('====Bins====')
     display(bindf)
@@ -185,25 +208,33 @@ if __name__ == "__main__":
         staterrordf.to_excel(writer, sheet_name='Statistical Error', index=True)
         
     '''
-    times = binlogavg.keys()
-    values = binlogavg.values()
-    error = staterror.values()
+    
+    times = Posbinlogavg.keys()
+    
+    Posvalues = Posbinlogavg.values()
+    Poserror = Posstaterror.values()
+    
+    Negvalues = Negbinlogavg.values()
+    Negerror = Negstaterror.values()
     #print(error)
     xr = np.arange(0,stopPointTime)
-    yr = np.arange(-0.8,1.2,step=0.2)
+    yr = np.arange(-2,3,step=0.2)
     zeroes = []
     
     for x in range(20):
         zeroes.append(0)
     
-    print(times)
-    print(values)
+    #print(times)
+    #print(values)
     fig, ax = plt.subplots()
     
-    plt.title('Averages of Bin Logarithms w/ Error Bars')
+    plt.title('Averages of Negative and Positive Momentum Energies')
 
-    plt.plot(values,marker='o',markersize='4',color='b')
+    plt.plot(Posvalues,marker='o',markersize='4',color='b',label='Positive Momentum')
+    plt.plot(Negvalues,marker='^',markersize='4',color='y',label='Negative Momentum')
     plt.plot(xr,zeroes,color='k')
+    
+    plt.legend(loc='upper left')
     plt.grid(visible=True,linestyle='--')
     #plt.xticks(np.arange(0,20),times)
     
@@ -213,18 +244,12 @@ if __name__ == "__main__":
     plt.ylabel('Averages')
     
     ax.tick_params(axis='both', labelsize=7)
-    '''
-    for xy in zip(xr, values):
-        plt.annotate('(%.2f, %.2f)' % xy, xy=xy)
-    '''
-    plt.errorbar(xr,values,yerr=list(error),ecolor='r')
     
     
-    
+    plt.errorbar(xr,Posvalues,yerr=list(Poserror),ecolor='r')
+    plt.errorbar(xr,Negvalues,yerr=list(Negerror),ecolor='k')
 
     plt.show()
-
-
 
 
 
