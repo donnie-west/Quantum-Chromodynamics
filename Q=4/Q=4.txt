@@ -1,0 +1,1 @@
+Added code for Q=1 position. Returns a plot of bin averages for tx/tx+1 with error bars. Two point directory must be extracted in order for code to run
